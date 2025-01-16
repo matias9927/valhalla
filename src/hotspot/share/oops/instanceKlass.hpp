@@ -194,6 +194,12 @@ class InlineLayoutInfo : public MetaspaceObj {
   static ByteSize null_marker_offset_offset() { return in_ByteSize(offset_of(InlineLayoutInfo, _null_marker_offset)); }
 };
 
+typedef struct {
+  u2 _name_index;
+  u2 _signature_index;
+  bool _satisfied;
+} NameAndSig;
+
 class InstanceKlass: public Klass {
   friend class VMStructs;
   friend class JVMCIVMStructs;
@@ -473,9 +479,11 @@ class InstanceKlass: public Klass {
     _transitive_interfaces = a;
   }
 
+  FieldInfo field(int index) const;
+
  private:
   friend class fieldDescriptor;
-  FieldInfo field(int index) const;
+  // FieldInfo field(int index) const;
 
  public:
   int field_offset      (int index) const { return field(index).offset(); }
@@ -497,6 +505,8 @@ class InstanceKlass: public Klass {
 
   Array<u1>* fieldinfo_stream() const { return _fieldinfo_stream; }
   void set_fieldinfo_stream(Array<u1>* fis) { _fieldinfo_stream = fis; }
+
+  size_t strict_fields_count() const;
 
   Array<FieldStatus>* fields_status() const {return _fields_status; }
   void set_fields_status(Array<FieldStatus>* array) { _fields_status = array; }

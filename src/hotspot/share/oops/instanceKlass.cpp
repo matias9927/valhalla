@@ -1977,6 +1977,16 @@ bool InstanceKlass::find_field_from_offset(int offset, bool is_static, fieldDesc
   return false;
 }
 
+size_t InstanceKlass::strict_fields_count() const {
+  size_t strict_fields_count = 0;
+  for (AllFieldStream fs(this); !fs.done(); fs.next()) {
+    FieldInfo fi = field(fs.index());
+    if (fi.access_flags().is_strict()) {
+      strict_fields_count++;
+    }
+  }
+  return strict_fields_count;
+}
 
 void InstanceKlass::methods_do(void f(Method* method)) {
   // Methods aren't stable until they are loaded.  This can be read outside

@@ -45,11 +45,12 @@ class StackMapTable : public StackObj {
   int32_t              _code_length;
   int32_t              _frame_count;     // Stackmap frame count
   StackMapFrame**       _frame_array;
+  u2*                  _assert_unset_fields; // Array of CP indices to unset fields
 
  public:
   StackMapTable(StackMapReader* reader, StackMapFrame* init_frame,
                 u2 max_locals, u2 max_stack,
-                char* code_data, int code_len, TRAPS);
+                char* code_data, int code_len, int32_t unset_fields_count, TRAPS);
 
   inline int32_t get_frame_count() const { return _frame_count; }
   inline int get_offset(int index) const {
@@ -77,6 +78,10 @@ class StackMapTable : public StackObj {
   int get_index_from_offset(int32_t offset) const;
 
   void print_on(outputStream* str) const;
+
+  u2* assert_unset_fields() const { return _assert_unset_fields; }
+  u2 get_unset_field(int index) { return _assert_unset_fields[index]; }
+  void set_unset_field(int index, int cpi) { _assert_unset_fields[index] = cpi; }
 };
 
 class StackMapStream : StackObj {

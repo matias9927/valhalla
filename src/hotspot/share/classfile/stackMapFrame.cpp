@@ -32,10 +32,11 @@
 #include "runtime/handles.inline.hpp"
 #include "utilities/globalDefinitions.hpp"
 
-StackMapFrame::StackMapFrame(u2 max_locals, u2 max_stack, ClassVerifier* v) :
+StackMapFrame::StackMapFrame(u2 max_locals, u2 max_stack, NameAndSig* initial_strict_fields, size_t unset_fields_length, ClassVerifier* v) :
                       _offset(0), _locals_size(0), _stack_size(0),
                       _stack_mark(0), _max_locals(max_locals),
-                      _max_stack(max_stack), _flags(0), _verifier(v) {
+                      _max_stack(max_stack), _flags(0), _assert_unset_fields(initial_strict_fields),
+                      _unset_fields_length(unset_fields_length), _verifier(v) {
   Thread* thr = v->thread();
   _locals = NEW_RESOURCE_ARRAY_IN_THREAD(thr, VerificationType, max_locals);
   _stack = NEW_RESOURCE_ARRAY_IN_THREAD(thr, VerificationType, max_stack);

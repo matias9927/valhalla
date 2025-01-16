@@ -45,12 +45,13 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/constantPool.inline.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/instanceKlass.inline.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "runtime/arguments.hpp"
-#include "runtime/fieldDescriptor.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
@@ -721,8 +722,26 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   assert(SignatureVerifier::is_valid_method_signature(m->signature()),
          "Invalid method signature");
 
+  // Collect the initial strict instance fields
+  InstanceKlass* holder = m->method_holder();
+  size_t strict_fields_count = holder->strict_fields_count();
+
+  NameAndSig* strict_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, strict_fields_count);
+  int count = 0;
+  for (AllFieldStream fs(holder); !fs.done(); fs.next()) {
+    FieldInfo fi = holder->field(fs.index());
+    if (fi.access_flags().is_strict()) {
+      assert((size_t)count < strict_fields_count, "must be");
+      strict_fields[count]._name_index = fi.name_index();
+      strict_fields[count]._signature_index = fi.signature_index();
+      strict_fields[count]._satisfied = false;
+      count++;
+    }
+  }
+
   // Initial stack map frame: offset is 0, stack is initially empty.
-  StackMapFrame current_frame(max_locals, max_stack, this);
+  StackMapFrame current_frame(max_locals, max_stack, strict_fields, strict_fields_count, this);
+  current_frame.print_strict_fields(tty, cp);
   // Set initial locals
   VerificationType return_type = current_frame.set_locals_from_arg( m, current_type());
 
@@ -750,8 +769,10 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   Array<u1>* stackmap_data = m->stackmap_data();
   StackMapStream stream(stackmap_data);
   StackMapReader reader(this, &stream, code_data, code_length, THREAD);
+
   StackMapTable stackmap_table(&reader, &current_frame, max_locals, max_stack,
-                               code_data, code_length, CHECK_VERIFY(this));
+                               code_data, code_length, strict_fields_count, CHECK_VERIFY(this));
+  log_info(verification)("Strict fields count: %ld", strict_fields_count);
 
   LogTarget(Debug, verification) lt;
   if (lt.is_enabled()) {
@@ -2396,6 +2417,19 @@ void ClassVerifier::verify_field_instructions(RawBytecodeStream* bcs,
         if (is_local_field) {
           // Set the type to the current type so the is_assignable check passes.
           stack_object_type = current_type();
+
+          if (fd.access_flags().is_strict()) {
+            int index;
+            bool found = current_frame->find_strict_field(fd.name(), fd.signature(), cp, &index);
+            if (found) {
+              current_frame->satisfy_unset_field(index);
+            } else {
+              // throw exception
+              ShouldNotReachHere();
+            }
+            log_info(verification)("Putfield");
+            current_frame->print_strict_fields(tty, cp);
+          }
         }
       } else if (supports_strict_fields(_klass)) {
         // `strict` fields are not writable, but only local fields produce verification errors

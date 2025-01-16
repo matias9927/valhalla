@@ -60,6 +60,9 @@ class StackMapFrame : public ResourceObj {
   VerificationType* _locals; // local variable type array
   VerificationType* _stack;  // operand stack type array
 
+  NameAndSig* _assert_unset_fields; // List of unsatisfied strict fields in the basic block
+  size_t _unset_fields_length;
+
   ClassVerifier* _verifier;  // the verifier verifying this method
 
   StackMapFrame(const StackMapFrame& cp) :
@@ -94,7 +97,7 @@ class StackMapFrame : public ResourceObj {
   // This constructor is used by the type checker to allocate frames
   // in type state, which have _max_locals and _max_stack array elements
   // in _locals and _stack.
-  StackMapFrame(u2 max_locals, u2 max_stack, ClassVerifier* verifier);
+  StackMapFrame(u2 max_locals, u2 max_stack, NameAndSig* initial_strict_fields, size_t unset_fields_length, ClassVerifier* verifier);
 
   // This constructor is used to initialize stackmap frames in stackmap table,
   // which have _locals_size and _stack_size array elements in _locals and _stack.
@@ -135,6 +138,38 @@ class StackMapFrame : public ResourceObj {
   inline u2 max_locals() const                { return _max_locals; }
   inline u2 max_stack() const                 { return _max_stack; }
   inline bool flag_this_uninit() const        { return _flags & FLAG_THIS_UNINIT; }
+
+  NameAndSig get_strict_field(int index) {
+    return _assert_unset_fields[index];
+  }
+
+  bool find_strict_field(Symbol* name, Symbol* signature, const constantPoolHandle& cp, int* index) {
+    for (size_t i = 0; i < _unset_fields_length; i++) {
+      NameAndSig field = _assert_unset_fields[(int)i];
+      Symbol* name_sym = cp->symbol_at(field._name_index);
+      Symbol* sig_sym = cp->symbol_at(field._signature_index);
+      if (name_sym == name && sig_sym == signature) {
+        *index = i;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void satisfy_unset_field(int index) {
+    _assert_unset_fields[index]._satisfied = true;
+  }
+
+  void print_strict_fields(outputStream* st, const constantPoolHandle& cp) {
+    for (size_t i = 0; i < _unset_fields_length; i++) {
+      NameAndSig strict_field = _assert_unset_fields[(int)i];
+      log_info(verification)("Strict field %ld, %s%s (Name: %d, Sig: %d) Satisfied: %s", i,
+                            cp->printable_name_at(strict_field._name_index),
+                            cp->printable_name_at(strict_field._signature_index),
+                            strict_field._name_index, strict_field._signature_index,
+                            strict_field._satisfied ? "true" : "false");
+    }
+  }
 
   // Set locals and stack types to bogus
   inline void reset() {

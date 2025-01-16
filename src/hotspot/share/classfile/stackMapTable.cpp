@@ -32,12 +32,13 @@
 
 StackMapTable::StackMapTable(StackMapReader* reader, StackMapFrame* init_frame,
                              u2 max_locals, u2 max_stack,
-                             char* code_data, int code_len, TRAPS) {
+                             char* code_data, int code_len, int32_t unset_fields_count, TRAPS) {
   _code_length = code_len;
   _frame_count = reader->get_frame_count();
   if (_frame_count > 0) {
     _frame_array = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD,
                                                 StackMapFrame*, _frame_count);
+    _assert_unset_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, u2, unset_fields_count);
     StackMapFrame* pre_frame = init_frame;
     for (int32_t i = 0; i < _frame_count; i++) {
       StackMapFrame* frame = reader->next(
