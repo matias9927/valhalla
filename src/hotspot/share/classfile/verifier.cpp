@@ -732,11 +732,11 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   if (is_constructor) {
     int count = 0;
     for (AllFieldStream fs(holder); !fs.done(); fs.next()) {
-      FieldInfo fi = holder->field(fs.index());
-      if (fi.access_flags().is_strict()) {
+      int index = fs.index();
+      if (holder->field_is_strict(index)) {
         assert((size_t)count < strict_fields_count, "must be");
-        strict_fields[count]._name_index = fi.name_index();
-        strict_fields[count]._signature_index = fi.signature_index();
+        strict_fields[count]._name_index = holder->field_name_index(index);
+        strict_fields[count]._signature_index = holder->field_signature_index(index);
         strict_fields[count]._satisfied = false;
         count++;
       }
