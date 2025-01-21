@@ -194,12 +194,6 @@ class InlineLayoutInfo : public MetaspaceObj {
   static ByteSize null_marker_offset_offset() { return in_ByteSize(offset_of(InlineLayoutInfo, _null_marker_offset)); }
 };
 
-typedef struct {
-  u2 _name_index;
-  u2 _signature_index;
-  bool _satisfied;
-} NameAndSig;
-
 class InstanceKlass: public Klass {
   friend class VMStructs;
   friend class JVMCIVMStructs;

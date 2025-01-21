@@ -33,6 +33,12 @@
 #include "utilities/growableArray.hpp"
 #include "utilities/resourceHash.hpp"
 
+typedef struct {
+  u2 _name_index;
+  u2 _signature_index;
+  bool _satisfied;
+} NameAndSig;
+
 // The verifier class
 class Verifier : AllStatic {
  public:

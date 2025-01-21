@@ -727,21 +727,28 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   size_t strict_fields_count = holder->strict_fields_count();
 
   NameAndSig* strict_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, strict_fields_count);
-  int count = 0;
-  for (AllFieldStream fs(holder); !fs.done(); fs.next()) {
-    FieldInfo fi = holder->field(fs.index());
-    if (fi.access_flags().is_strict()) {
-      assert((size_t)count < strict_fields_count, "must be");
-      strict_fields[count]._name_index = fi.name_index();
-      strict_fields[count]._signature_index = fi.signature_index();
-      strict_fields[count]._satisfied = false;
-      count++;
+
+  bool is_constructor = m->name()->equals("<init>");
+  if (is_constructor) {
+    int count = 0;
+    for (AllFieldStream fs(holder); !fs.done(); fs.next()) {
+      FieldInfo fi = holder->field(fs.index());
+      if (fi.access_flags().is_strict()) {
+        assert((size_t)count < strict_fields_count, "must be");
+        strict_fields[count]._name_index = fi.name_index();
+        strict_fields[count]._signature_index = fi.signature_index();
+        strict_fields[count]._satisfied = false;
+        count++;
+      }
     }
   }
 
   // Initial stack map frame: offset is 0, stack is initially empty.
   StackMapFrame current_frame(max_locals, max_stack, strict_fields, strict_fields_count, this);
-  current_frame.print_strict_fields(tty, cp);
+  if (is_constructor) {
+    log_info(verification)("Strict fields count: %ld", strict_fields_count);
+    current_frame.print_strict_fields(tty, cp);
+  }
   // Set initial locals
   VerificationType return_type = current_frame.set_locals_from_arg( m, current_type());
 
@@ -772,7 +779,6 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
 
   StackMapTable stackmap_table(&reader, &current_frame, max_locals, max_stack,
                                code_data, code_length, strict_fields_count, CHECK_VERIFY(this));
-  log_info(verification)("Strict fields count: %ld", strict_fields_count);
 
   LogTarget(Debug, verification) lt;
   if (lt.is_enabled()) {
