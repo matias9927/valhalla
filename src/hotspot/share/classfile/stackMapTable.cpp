@@ -275,9 +275,16 @@ StackMapFrame* StackMapReader::next(
   u2 offset_delta = _stream->get_u2(CHECK_NULL);
 
   if (frame_type < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
-    // reserved frame types
-    _stream->stackmap_format_error(
-      "reserved frame type", CHECK_VERIFY_(_verifier, nullptr));
+    if (frame_type == 246) {
+      // assert unset fields
+      u1 index = _stream->get_u2(CHECK_NULL);
+      log_info(verification)("Stackmap assert unset field: %hd", offset_delta);
+      //frame->_assert_unset_fields
+    } else {
+      // reserved frame types
+      _stream->stackmap_format_error(
+        "reserved frame type", CHECK_VERIFY_(_verifier, nullptr));
+    }
   }
 
   if (frame_type == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {

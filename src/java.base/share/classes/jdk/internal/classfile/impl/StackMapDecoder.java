@@ -195,8 +195,13 @@ public class StackMapDecoder {
                 bci += frameType - 63;
                 stack = List.of(readVerificationTypeInfo());
             } else {
-                if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED)
-                    throw new IllegalArgumentException("Invalid stackmap frame type: " + frameType);
+                if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+                    if (frameType == 246) {
+                        // Do something
+                    } else {
+                        throw new IllegalArgumentException("Invalid stackmap frame type: " + frameType);
+                    }
+                }
                 bci += u2() + 1;
                 if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
                     stack = List.of(readVerificationTypeInfo());
