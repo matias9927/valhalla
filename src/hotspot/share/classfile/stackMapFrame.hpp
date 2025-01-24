@@ -143,31 +143,34 @@ class StackMapFrame : public ResourceObj {
     return _assert_unset_fields[index];
   }
 
-  bool find_strict_field(Symbol* name, Symbol* signature, const constantPoolHandle& cp, int* index) {
+  bool satisfy_unset_field(Symbol* name, Symbol* signature) {
     for (size_t i = 0; i < _unset_fields_length; i++) {
       NameAndSig field = _assert_unset_fields[(int)i];
-      Symbol* name_sym = cp->symbol_at(field._name_index);
-      Symbol* sig_sym = cp->symbol_at(field._signature_index);
-      if (name_sym == name && sig_sym == signature) {
-        *index = i;
+      if (field._name == name && field._signature == signature) {
+        field._satisfied = true;
+        _assert_unset_fields[(int)i] = field;
         return true;
       }
     }
     return false;
   }
 
-  void satisfy_unset_field(int index) {
-    _assert_unset_fields[index]._satisfied = true;
+  bool unset_fields_satisfied() {
+    bool all_satisfied = true;
+    for (size_t i = 0; i < _unset_fields_length; i++) {
+      all_satisfied &= _assert_unset_fields[(int)i]._satisfied;
+    }
+    return all_satisfied;
   }
 
   void print_strict_fields(outputStream* st, const constantPoolHandle& cp) {
+    ResourceMark rm;
     for (size_t i = 0; i < _unset_fields_length; i++) {
       NameAndSig strict_field = _assert_unset_fields[(int)i];
-      log_info(verification)("Strict field %ld, %s%s (Name: %d, Sig: %d) Satisfied: %s", i,
-                            cp->printable_name_at(strict_field._name_index),
-                            cp->printable_name_at(strict_field._signature_index),
-                            strict_field._name_index, strict_field._signature_index,
-                            strict_field._satisfied ? "true" : "false");
+      log_info(verification)("Strict field #%ld: %s%s (Satisfied: %s)", i,
+                             strict_field._name->as_C_string(),
+                             strict_field._signature->as_C_string(),
+                             strict_field._satisfied ? "true" : "false");
     }
   }
 

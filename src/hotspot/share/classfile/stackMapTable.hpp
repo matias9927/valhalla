@@ -45,7 +45,7 @@ class StackMapTable : public StackObj {
   int32_t              _code_length;
   int32_t              _frame_count;     // Stackmap frame count
   StackMapFrame**       _frame_array;
-  u2*                  _assert_unset_fields; // Array of CP indices to unset fields
+  NameAndSig*          _assert_unset_fields; // Array of CP indices to unset fields
 
  public:
   StackMapTable(StackMapReader* reader, StackMapFrame* init_frame,
@@ -79,9 +79,8 @@ class StackMapTable : public StackObj {
 
   void print_on(outputStream* str) const;
 
-  u2* assert_unset_fields() const { return _assert_unset_fields; }
-  u2 get_unset_field(int index) { return _assert_unset_fields[index]; }
-  void set_unset_field(int index, int cpi) { _assert_unset_fields[index] = cpi; }
+  NameAndSig* assert_unset_fields() const { return _assert_unset_fields; }
+  NameAndSig get_unset_field(int index) { return _assert_unset_fields[index]; }
 };
 
 class StackMapStream : StackObj {

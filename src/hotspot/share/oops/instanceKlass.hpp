@@ -488,8 +488,6 @@ class InstanceKlass: public Klass {
   FieldStatus field_status(int index)   const { return fields_status()->at(index); }
   inline Symbol* field_name        (int index) const;
   inline Symbol* field_signature   (int index) const;
-  inline u2 field_name_index      (int index) const;
-  inline u2 field_signature_index (int index) const;
   bool field_is_flat(int index) const { return field_flags(index).is_flat(); }
   bool field_has_null_marker(int index) const { return field_flags(index).has_null_marker(); }
   bool field_is_null_free_inline_type(int index) const;

@@ -38,7 +38,7 @@ StackMapTable::StackMapTable(StackMapReader* reader, StackMapFrame* init_frame,
   if (_frame_count > 0) {
     _frame_array = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD,
                                                 StackMapFrame*, _frame_count);
-    _assert_unset_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, u2, unset_fields_count);
+    _assert_unset_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, unset_fields_count);
     StackMapFrame* pre_frame = init_frame;
     for (int32_t i = 0; i < _frame_count; i++) {
       StackMapFrame* frame = reader->next(
@@ -219,6 +219,15 @@ StackMapFrame* StackMapReader::next(
   int offset;
   VerificationType* locals = nullptr;
   u1 frame_type = _stream->get_u1(CHECK_NULL);
+  if (frame_type == 246) {
+    // assert unset fields
+    u2 num_unset_fields = _stream->get_u2(CHECK_NULL);
+    log_info(verification)("Num unset fields: %hu", num_unset_fields);
+    for (u2 i = 0; i < num_unset_fields; i++) {
+      u2 index = _stream->get_u2(CHECK_NULL);
+      log_info(verification)("Stackmap assert unset field: %hu", index);
+    }
+  }
   if (frame_type < 64) {
     // same_frame
     if (first) {
@@ -275,16 +284,9 @@ StackMapFrame* StackMapReader::next(
   u2 offset_delta = _stream->get_u2(CHECK_NULL);
 
   if (frame_type < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
-    if (frame_type == 246) {
-      // assert unset fields
-      u1 index = _stream->get_u2(CHECK_NULL);
-      log_info(verification)("Stackmap assert unset field: %hd", offset_delta);
-      //frame->_assert_unset_fields
-    } else {
-      // reserved frame types
-      _stream->stackmap_format_error(
-        "reserved frame type", CHECK_VERIFY_(_verifier, nullptr));
-    }
+    // reserved frame types
+    _stream->stackmap_format_error(
+      "reserved frame type", CHECK_VERIFY_(_verifier, nullptr));
   }
 
   if (frame_type == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {

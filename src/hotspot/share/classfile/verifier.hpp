@@ -34,8 +34,8 @@
 #include "utilities/resourceHash.hpp"
 
 typedef struct {
-  u2 _name_index;
-  u2 _signature_index;
+  Symbol* _name;
+  Symbol* _signature;
   bool _satisfied;
 } NameAndSig;
 

@@ -735,8 +735,8 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
       int index = fs.index();
       if (holder->field_is_strict(index)) {
         assert((size_t)count < strict_fields_count, "must be");
-        strict_fields[count]._name_index = holder->field_name_index(index);
-        strict_fields[count]._signature_index = holder->field_signature_index(index);
+        strict_fields[count]._name = holder->field_name(index);
+        strict_fields[count]._signature = holder->field_signature(index);
         strict_fields[count]._satisfied = false;
         count++;
       }
@@ -2425,12 +2425,8 @@ void ClassVerifier::verify_field_instructions(RawBytecodeStream* bcs,
           stack_object_type = current_type();
 
           if (fd.access_flags().is_strict()) {
-            int index;
-            bool found = current_frame->find_strict_field(fd.name(), fd.signature(), cp, &index);
-            if (found) {
-              current_frame->satisfy_unset_field(index);
-            } else {
-              // throw exception
+            if (!current_frame->satisfy_unset_field(fd.name(), fd.signature())) {
+              // Field not found, throw exception
               ShouldNotReachHere();
             }
             log_info(verification)("Putfield");
@@ -2725,6 +2721,11 @@ void ClassVerifier::verify_invoke_init(
           TypeOrigin::implicit(current_type())),
           "Bad <init> method call");
       return;
+    }
+
+    // Strict final fields must be satisfied by this point
+    if (!current_frame->unset_fields_satisfied()) {
+      verify_error(ErrorContext::bad_code(bci), "All strict final fields must be initialized before super()");
     }
 
     // If this invokespecial call is done from inside of a TRY block then make
