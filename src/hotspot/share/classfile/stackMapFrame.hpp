@@ -64,7 +64,7 @@ class StackMapFrame : public ResourceObj {
   size_t _unset_fields_length;
 
   ClassVerifier* _verifier;  // the verifier verifying this method
-
+ public:
   StackMapFrame(const StackMapFrame& cp) :
       ResourceObj(cp),
       _offset(cp._offset), _locals_size(cp._locals_size),
@@ -88,6 +88,8 @@ class StackMapFrame : public ResourceObj {
         _stack[i] = VerificationType::bogus_type();
       }
     }
+    _assert_unset_fields = cp._assert_unset_fields;
+    _unset_fields_length = cp._unset_fields_length;
     _verifier = nullptr;
   }
 

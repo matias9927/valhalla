@@ -778,7 +778,7 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   StackMapReader reader(this, &stream, code_data, code_length, THREAD);
 
   StackMapTable stackmap_table(&reader, &current_frame, max_locals, max_stack,
-                               code_data, code_length, strict_fields_count, CHECK_VERIFY(this));
+                               code_data, code_length, CHECK_VERIFY(this));
 
   LogTarget(Debug, verification) lt;
   if (lt.is_enabled()) {

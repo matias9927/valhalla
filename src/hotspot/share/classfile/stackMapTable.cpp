@@ -32,16 +32,15 @@
 
 StackMapTable::StackMapTable(StackMapReader* reader, StackMapFrame* init_frame,
                              u2 max_locals, u2 max_stack,
-                             char* code_data, int code_len, int32_t unset_fields_count, TRAPS) {
+                             char* code_data, int code_len, TRAPS) {
   _code_length = code_len;
   _frame_count = reader->get_frame_count();
   if (_frame_count > 0) {
     _frame_array = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD,
                                                 StackMapFrame*, _frame_count);
-    _assert_unset_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, unset_fields_count);
     StackMapFrame* pre_frame = init_frame;
     for (int32_t i = 0; i < _frame_count; i++) {
-      StackMapFrame* frame = reader->next(
+      StackMapFrame* frame = reader->next( // here
         pre_frame, i == 0, max_locals, max_stack,
         CHECK_VERIFY(pre_frame->verifier()));
       _frame_array[i] = frame;
@@ -234,6 +233,7 @@ StackMapFrame* StackMapReader::next(
     if (num_unset_fields > 0) {
       pre_frame->print_strict_fields(tty);
     }
+    //frame = new StackMapFrame(*pre_frame); // Make a copy?
     return pre_frame;
   }
   if (frame_type < 64) {
@@ -250,7 +250,7 @@ StackMapFrame* StackMapReader::next(
       locals = pre_frame->locals();
     }
     frame = new StackMapFrame(
-      offset, pre_frame->flags(), pre_frame->locals_size(), pre_frame->stack_size(),
+      offset, pre_frame->flags(), pre_frame->locals_size(), 0,
       max_locals, max_stack, locals, nullptr,
       pre_frame->assert_unset_fields(),
       pre_frame->assert_unset_fields_length(), _verifier);
@@ -296,6 +296,7 @@ StackMapFrame* StackMapReader::next(
   u2 offset_delta = _stream->get_u2(CHECK_NULL);
 
   if (frame_type < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+    // reserved frame types
     _stream->stackmap_format_error(
       "reserved frame type", CHECK_VERIFY_(_verifier, nullptr));
   }
