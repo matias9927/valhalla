@@ -747,7 +747,7 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   StackMapFrame current_frame(max_locals, max_stack, strict_fields, strict_fields_count, this);
   if (is_constructor) {
     log_info(verification)("Strict fields count: %ld", strict_fields_count);
-    current_frame.print_strict_fields(tty, cp);
+    current_frame.print_strict_fields(tty);
   }
   // Set initial locals
   VerificationType return_type = current_frame.set_locals_from_arg( m, current_type());
@@ -2430,7 +2430,7 @@ void ClassVerifier::verify_field_instructions(RawBytecodeStream* bcs,
               ShouldNotReachHere();
             }
             log_info(verification)("Putfield");
-            current_frame->print_strict_fields(tty, cp);
+            current_frame->print_strict_fields(tty);
           }
         }
       } else if (supports_strict_fields(_klass)) {

@@ -52,7 +52,10 @@ StackMapFrame::StackMapFrame(u2 max_locals, u2 max_stack, NameAndSig* initial_st
 StackMapFrame* StackMapFrame::frame_in_exception_handler(u1 flags) {
   Thread* thr = _verifier->thread();
   VerificationType* stack = NEW_RESOURCE_ARRAY_IN_THREAD(thr, VerificationType, 1);
-  StackMapFrame* frame = new StackMapFrame(_offset, flags, _locals_size, 0, _max_locals, _max_stack, _locals, stack, _verifier);
+  StackMapFrame* frame = new StackMapFrame(_offset, flags, _locals_size, 0,
+                                           _max_locals, _max_stack, _locals, stack,
+                                           _assert_unset_fields, _unset_fields_length,
+                                           _verifier);
   return frame;
 }
 

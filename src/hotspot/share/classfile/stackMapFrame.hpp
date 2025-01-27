@@ -109,6 +109,8 @@ class StackMapFrame : public ResourceObj {
                 u2 max_stack,
                 VerificationType* locals,
                 VerificationType* stack,
+                NameAndSig* assert_unset_fields,
+                size_t num_unset_fields,
                 ClassVerifier* v) : _offset(offset),
                                     _locals_size(locals_size),
                                     _stack_size(stack_size),
@@ -116,6 +118,8 @@ class StackMapFrame : public ResourceObj {
                                     _max_locals(max_locals),
                                     _max_stack(max_stack),  _flags(flags),
                                     _locals(locals), _stack(stack),
+                                    _assert_unset_fields(assert_unset_fields),
+                                    _unset_fields_length(num_unset_fields),
                                     _verifier(v) { }
 
   static StackMapFrame* copy(StackMapFrame* smf) {
@@ -139,8 +143,16 @@ class StackMapFrame : public ResourceObj {
   inline u2 max_stack() const                 { return _max_stack; }
   inline bool flag_this_uninit() const        { return _flags & FLAG_THIS_UNINIT; }
 
+  NameAndSig* assert_unset_fields() const {
+    return _assert_unset_fields;
+  }
+
   NameAndSig get_strict_field(int index) {
     return _assert_unset_fields[index];
+  }
+
+  size_t assert_unset_fields_length() const {
+    return _unset_fields_length;
   }
 
   bool satisfy_unset_field(Symbol* name, Symbol* signature) {
@@ -163,7 +175,7 @@ class StackMapFrame : public ResourceObj {
     return all_satisfied;
   }
 
-  void print_strict_fields(outputStream* st, const constantPoolHandle& cp) {
+  void print_strict_fields(outputStream* st) {
     ResourceMark rm;
     for (size_t i = 0; i < _unset_fields_length; i++) {
       NameAndSig strict_field = _assert_unset_fields[(int)i];
