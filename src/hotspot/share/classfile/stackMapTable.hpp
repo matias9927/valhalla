@@ -146,7 +146,7 @@ class StackMapReader : StackObj {
 
   inline int32_t get_frame_count() const                { return _frame_count; }
   StackMapFrame* next(StackMapFrame* pre_frame, bool first,
-                      u2 max_locals, u2 max_stack, TRAPS);
+                      u2 max_locals, u2 max_stack, int32_t* unset_field_entries, TRAPS);
 
   void check_end(TRAPS) {
     if (!_stream->at_end()) {
