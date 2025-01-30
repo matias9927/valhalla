@@ -490,6 +490,7 @@ class InstanceKlass: public Klass {
   bool field_is_flat(int index) const { return field_flags(index).is_flat(); }
   bool field_has_null_marker(int index) const { return field_flags(index).has_null_marker(); }
   bool field_is_null_free_inline_type(int index) const;
+  bool field_is_strict(int index) const { return field(index).access_flags().is_strict(); }
   bool is_class_in_loadable_descriptors_attribute(Symbol* name) const;
 
   int null_marker_offset(int index) const { return inline_layout_info(index).null_marker_offset(); }
@@ -500,6 +501,8 @@ class InstanceKlass: public Klass {
 
   Array<u1>* fieldinfo_stream() const { return _fieldinfo_stream; }
   void set_fieldinfo_stream(Array<u1>* fis) { _fieldinfo_stream = fis; }
+
+  size_t strict_fields_count() const;
 
   Array<FieldStatus>* fields_status() const {return _fields_status; }
   void set_fields_status(Array<FieldStatus>* array) { _fields_status = array; }

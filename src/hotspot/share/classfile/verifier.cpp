@@ -45,12 +45,13 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/constantPool.inline.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/instanceKlass.inline.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "runtime/arguments.hpp"
-#include "runtime/fieldDescriptor.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
@@ -722,8 +723,35 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   assert(SignatureVerifier::is_valid_method_signature(m->signature()),
          "Invalid method signature");
 
+  // Collect the initial strict instance fields
+  InstanceKlass* holder = m->method_holder();
+  size_t strict_fields_count = holder->strict_fields_count();
+
+  //NameAndSig* strict_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, strict_fields_count);
+  StackMapFrame::AssertUnsetFieldTable* strict_fields = new (mtClassShared)StackMapFrame::AssertUnsetFieldTable();
+
+  bool is_constructor = m->name()->equals("<init>");
+  if (is_constructor) {
+    for (AllFieldStream fs(holder); !fs.done(); fs.next()) {
+      int index = fs.index();
+      if (holder->field_is_strict(index)) {
+        NameAndSig new_field;
+        new_field._name = holder->field_name(index);
+        new_field._signature = holder->field_signature(index);
+        new_field._satisfied = false;
+        bool created;
+        strict_fields->put_if_absent(new_field, new_field, &created);
+        assert(created == true, "Must be");
+      }
+    }
+  }
+
   // Initial stack map frame: offset is 0, stack is initially empty.
-  StackMapFrame current_frame(max_locals, max_stack, this);
+  StackMapFrame current_frame(max_locals, max_stack, strict_fields, this);
+  if (is_constructor) {
+    log_info(verification)("Strict fields count: %d", strict_fields->number_of_entries());
+    current_frame.print_strict_fields();
+  }
   // Set initial locals
   VerificationType return_type = current_frame.set_locals_from_arg( m, current_type());
 
@@ -751,6 +779,7 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   Array<u1>* stackmap_data = m->stackmap_data();
   StackMapStream stream(stackmap_data);
   StackMapReader reader(this, &stream, code_data, code_length, THREAD);
+
   StackMapTable stackmap_table(&reader, &current_frame, max_locals, max_stack,
                                code_data, code_length, CHECK_VERIFY(this));
 
@@ -2395,6 +2424,18 @@ void ClassVerifier::verify_field_instructions(RawBytecodeStream* bcs,
         if (is_local_field) {
           // Set the type to the current type so the is_assignable check passes.
           stack_object_type = current_type();
+
+          if (fd.access_flags().is_strict()) {
+            log_info(verification)("Putfield");
+            log_info(verification)("\tBefore");
+            current_frame->print_strict_fields();
+            if (!current_frame->satisfy_unset_field(fd.name(), fd.signature())) {
+              // Field not found, throw exception
+              ShouldNotReachHere();
+            }
+            log_info(verification)("\tAfter");
+            current_frame->print_strict_fields();
+          }
         }
       } else if (supports_strict_fields(_klass)) {
         // `strict` fields are not writable, but only local fields produce verification errors
@@ -2684,6 +2725,11 @@ void ClassVerifier::verify_invoke_init(
           TypeOrigin::implicit(current_type())),
           "Bad <init> method call");
       return;
+    }
+
+    // Strict final fields must be satisfied by this point
+    if (!current_frame->unset_fields_satisfied()) {
+      verify_error(ErrorContext::bad_code(bci), "All strict final fields must be initialized before super()");
     }
 
     // If this invokespecial call is done from inside of a TRY block then make

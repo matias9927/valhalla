@@ -33,6 +33,12 @@
 #include "utilities/growableArray.hpp"
 #include "utilities/resourceHash.hpp"
 
+typedef struct {
+  Symbol* _name;
+  Symbol* _signature;
+  bool _satisfied;
+} NameAndSig;
+
 // The verifier class
 class Verifier : AllStatic {
  public:
