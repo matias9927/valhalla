@@ -725,9 +725,6 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
 
   // Collect the initial strict instance fields
   InstanceKlass* holder = m->method_holder();
-  size_t strict_fields_count = holder->strict_fields_count();
-
-  //NameAndSig* strict_fields = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, NameAndSig, strict_fields_count);
   StackMapFrame::AssertUnsetFieldTable* strict_fields = new (mtClassShared)StackMapFrame::AssertUnsetFieldTable();
 
   bool is_constructor = m->name()->equals("<init>");
@@ -750,7 +747,8 @@ void ClassVerifier::verify_method(const methodHandle& m, TRAPS) {
   StackMapFrame current_frame(max_locals, max_stack, strict_fields, this);
   if (is_constructor) {
     log_info(verification)("Strict fields count: %d", strict_fields->number_of_entries());
-    current_frame.print_strict_fields();
+    log_info(verification)("Initial strict fields");
+    StackMapFrame::print_strict_fields(strict_fields);
   }
   // Set initial locals
   VerificationType return_type = current_frame.set_locals_from_arg( m, current_type());
@@ -2426,15 +2424,16 @@ void ClassVerifier::verify_field_instructions(RawBytecodeStream* bcs,
           stack_object_type = current_type();
 
           if (fd.access_flags().is_strict()) {
-            log_info(verification)("Putfield");
+            ResourceMark rm(THREAD);
+            log_info(verification)("Putfield: %s%s", fd.name()->as_C_string(), fd.signature()->as_C_string());
             log_info(verification)("\tBefore");
-            current_frame->print_strict_fields();
+            StackMapFrame::print_strict_fields(current_frame->assert_unset_fields());
             if (!current_frame->satisfy_unset_field(fd.name(), fd.signature())) {
               // Field not found, throw exception
               ShouldNotReachHere();
             }
             log_info(verification)("\tAfter");
-            current_frame->print_strict_fields();
+            StackMapFrame::print_strict_fields(current_frame->assert_unset_fields());
           }
         }
       } else if (supports_strict_fields(_klass)) {

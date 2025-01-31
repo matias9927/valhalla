@@ -159,6 +159,10 @@ class StackMapFrame : public ResourceObj {
     return _assert_unset_fields;
   }
 
+  void set_assert_unset_fields(AssertUnsetFieldTable* table) {
+    _assert_unset_fields = table;
+  }
+
   bool satisfy_unset_field(Symbol* name, Symbol* signature) {
     NameAndSig dummy_field;
     dummy_field._name = name;
@@ -183,21 +187,35 @@ class StackMapFrame : public ResourceObj {
   }
 
   // Replace unset fields with the version in StackMapTable
-  bool replace_unset_fields(AssertUnsetFieldTable* table) {
+  // Returns a copy
+  AssertUnsetFieldTable* replace_unset_fields(AssertUnsetFieldTable* table) {
     bool is_subset = true;
-    auto reset_fields = [&] (const NameAndSig& key, NameAndSig& value) {
-      value._satisfied = false;
+    AssertUnsetFieldTable* new_table = new (mtClassShared)AssertUnsetFieldTable();
+
+    auto copy = [&, new_table, this] (const NameAndSig& key, const NameAndSig& value) {
+      new_table->put(key, value);
     };
-    auto check_subset = [&is_subset, this] (const NameAndSig& key, const NameAndSig& value) {
-      is_subset &= (_assert_unset_fields->contains(key));
+    auto reset_fields = [&, new_table, this] (const NameAndSig& key, const NameAndSig& value) {
+      NameAndSig dummy_field;
+      dummy_field._name = value._name;
+      dummy_field._signature = value._signature;
+      dummy_field._satisfied = true;
+
+      new_table->put(key, dummy_field);
+    };
+    auto check_subset = [&is_subset, new_table, this] (const NameAndSig& key, const NameAndSig& value) {
+      is_subset &= (new_table->contains(key));
       if (is_subset) {
-        _assert_unset_fields->get(key)->_satisfied = key._satisfied;
+        new_table->put(key, value);
       }
     };
-    // Set all fields to unsatisfied and replace with those set in stack map table entry
-    _assert_unset_fields->iterate_all(reset_fields);
-    _assert_unset_fields->iterate_all(check_subset);
-    return is_subset;
+
+    _assert_unset_fields->iterate_all(copy);
+    new_table->iterate_all(reset_fields);
+    table->iterate_all(check_subset);
+    print_strict_fields(new_table);
+
+    return new_table;
   }
 
   bool unset_fields_compatible(AssertUnsetFieldTable* table) const {
@@ -213,14 +231,14 @@ class StackMapFrame : public ResourceObj {
     return compatible;
   }
 
-  void print_strict_fields() {
+  static void print_strict_fields(AssertUnsetFieldTable* table) {
     auto printfields = [&] (const NameAndSig& key, const NameAndSig& value) {
       log_info(verification)("Strict field: %s%s (Satisfied: %s)",
                              value._name->as_C_string(),
                              value._signature->as_C_string(),
                              value._satisfied ? "true" : "false");
     };
-    _assert_unset_fields->iterate_all(printfields);
+    table->iterate_all(printfields);
   }
 
   // Set locals and stack types to bogus

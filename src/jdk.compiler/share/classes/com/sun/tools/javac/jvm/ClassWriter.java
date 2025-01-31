@@ -146,6 +146,7 @@ public class ClassWriter extends ClassFile {
 
     /** The tags and constants used in compressed stackmap. */
     static final int SAME_FRAME_SIZE = 64;
+    static final int ASSERT_UNSET_FIELDS = 246;
     static final int SAME_LOCALS_1_STACK_ITEM_EXTENDED = 247;
     static final int SAME_FRAME_EXTENDED = 251;
     static final int FULL_FRAME = 255;
@@ -1263,7 +1264,7 @@ public class ClassWriter extends ClassFile {
             Assert.checkNull(code.stackMapBuffer);
             for (int i=0; i<nframes; i++) {
                 if (debugstackmap) System.out.print("  " + i + ":");
-                StackMapTableFrame frame = code.stackMapTableBuffer[i];
+                StackMapTablEntry frame = code.stackMapTableBuffer[i];
                 frame.write(this);
                 if (debugstackmap) System.out.println();
             }
@@ -1329,27 +1330,27 @@ public class ClassWriter extends ClassFile {
         }
 
     /** An entry in the JSR202 StackMapTable */
-    abstract static class StackMapTableFrame {
-        abstract int getFrameType();
+    abstract static class StackMapTablEntry {
+        abstract int getEntryType();
 
         void write(ClassWriter writer) {
-            int frameType = getFrameType();
-            writer.databuf.appendByte(frameType);
-            if (writer.debugstackmap) System.out.print(" frame_type=" + frameType);
+            int entryType = getEntryType();
+            writer.databuf.appendByte(entryType);
+            if (writer.debugstackmap) System.out.println(" frame_type=" + entryType);
         }
 
-        static class SameFrame extends StackMapTableFrame {
+        static class SameFrame extends StackMapTablEntry {
             final int offsetDelta;
             SameFrame(int offsetDelta) {
                 this.offsetDelta = offsetDelta;
             }
-            int getFrameType() {
+            int getEntryType() {
                 return (offsetDelta < SAME_FRAME_SIZE) ? offsetDelta : SAME_FRAME_EXTENDED;
             }
             @Override
             void write(ClassWriter writer) {
                 super.write(writer);
-                if (getFrameType() == SAME_FRAME_EXTENDED) {
+                if (getEntryType() == SAME_FRAME_EXTENDED) {
                     writer.databuf.appendChar(offsetDelta);
                     if (writer.debugstackmap){
                         System.out.print(" offset_delta=" + offsetDelta);
@@ -1358,14 +1359,14 @@ public class ClassWriter extends ClassFile {
             }
         }
 
-        static class SameLocals1StackItemFrame extends StackMapTableFrame {
+        static class SameLocals1StackItemFrame extends StackMapTablEntry {
             final int offsetDelta;
             final Type stack;
             SameLocals1StackItemFrame(int offsetDelta, Type stack) {
                 this.offsetDelta = offsetDelta;
                 this.stack = stack;
             }
-            int getFrameType() {
+            int getEntryType() {
                 return (offsetDelta < SAME_FRAME_SIZE) ?
                        (SAME_FRAME_SIZE + offsetDelta) :
                        SAME_LOCALS_1_STACK_ITEM_EXTENDED;
@@ -1373,7 +1374,7 @@ public class ClassWriter extends ClassFile {
             @Override
             void write(ClassWriter writer) {
                 super.write(writer);
-                if (getFrameType() == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+                if (getEntryType() == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
                     writer.databuf.appendChar(offsetDelta);
                     if (writer.debugstackmap) {
                         System.out.print(" offset_delta=" + offsetDelta);
@@ -1386,14 +1387,14 @@ public class ClassWriter extends ClassFile {
             }
         }
 
-        static class ChopFrame extends StackMapTableFrame {
+        static class ChopFrame extends StackMapTablEntry {
             final int frameType;
             final int offsetDelta;
             ChopFrame(int frameType, int offsetDelta) {
                 this.frameType = frameType;
                 this.offsetDelta = offsetDelta;
             }
-            int getFrameType() { return frameType; }
+            int getEntryType() { return frameType; }
             @Override
             void write(ClassWriter writer) {
                 super.write(writer);
@@ -1404,7 +1405,7 @@ public class ClassWriter extends ClassFile {
             }
         }
 
-        static class AppendFrame extends StackMapTableFrame {
+        static class AppendFrame extends StackMapTablEntry {
             final int frameType;
             final int offsetDelta;
             final Type[] locals;
@@ -1413,7 +1414,7 @@ public class ClassWriter extends ClassFile {
                 this.offsetDelta = offsetDelta;
                 this.locals = locals;
             }
-            int getFrameType() { return frameType; }
+            int getEntryType() { return frameType; }
             @Override
             void write(ClassWriter writer) {
                 super.write(writer);
@@ -1428,7 +1429,7 @@ public class ClassWriter extends ClassFile {
             }
         }
 
-        static class FullFrame extends StackMapTableFrame {
+        static class FullFrame extends StackMapTablEntry {
             final int offsetDelta;
             final Type[] locals;
             final Type[] stack;
@@ -1437,7 +1438,7 @@ public class ClassWriter extends ClassFile {
                 this.locals = locals;
                 this.stack = stack;
             }
-            int getFrameType() { return FULL_FRAME; }
+            int getEntryType() { return FULL_FRAME; }
             @Override
             void write(ClassWriter writer) {
                 super.write(writer);
@@ -1461,12 +1462,38 @@ public class ClassWriter extends ClassFile {
             }
         }
 
+        static class AssertUnsetFields extends StackMapTablEntry {
+            java.util.List<VarSymbol> unsetFields;
+
+            AssertUnsetFields(java.util.List<VarSymbol> unsetFields) {
+                this.unsetFields = unsetFields;
+            }
+
+            int getEntryType() { return ASSERT_UNSET_FIELDS; }
+
+            @Override
+            void write(ClassWriter writer) {
+                super.write(writer);
+                writer.databuf.appendChar(unsetFields.size());
+                if (writer.debugstackmap) {
+                    System.out.println("    # writing: AssertUnsetFields stackmap entry with " + unsetFields.size() + " fields");
+                }
+                for (VarSymbol vsym : unsetFields) {
+                    int index = writer.poolWriter.putNameAndType(vsym);
+                    writer.databuf.appendChar(index);
+                    if (writer.debugstackmap) {
+                        System.out.println("    #writing unset field: " + index + ", with name: " + vsym.name.toString());
+                    }
+                }
+            }
+        }
+
        /** Compare this frame with the previous frame and produce
         *  an entry of compressed stack map frame. */
-        static StackMapTableFrame getInstance(Code.StackMapFrame this_frame,
-                                              int prev_pc,
-                                              Type[] prev_locals,
-                                              Types types) {
+        static StackMapTablEntry getInstance(Code.StackMapFrame this_frame,
+                                             int prev_pc,
+                                             Type[] prev_locals,
+                                             Types types) {
             Type[] locals = this_frame.locals;
             Type[] stack = this_frame.stack;
             int offset_delta = this_frame.pc - prev_pc - 1;
