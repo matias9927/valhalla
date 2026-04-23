@@ -2897,7 +2897,7 @@ GrowableArray<Method*>* CompiledEntrySignature::get_supers() {
 }
 
 // Iterate over arguments and compute scalarized and non-scalarized signatures
-void CompiledEntrySignature::compute_calling_conventions(bool init) {
+void CompiledEntrySignature::compute_calling_conventions(bool init, SignatureCache* sc) {
   bool has_scalarized = false;
   if (_method != nullptr) {
     InstanceKlass* holder = _method->method_holder();
@@ -2918,7 +2918,7 @@ void CompiledEntrySignature::compute_calling_conventions(bool init) {
       SigEntry::add_entry(_sig_cc_ro, T_OBJECT, holder->name());
       arg_num++;
     }
-    for (SignatureStream ss(_method->signature()); !ss.at_return_type(); ss.next()) {
+    for (SignatureStream ss(_method->signature(), true, sc); !ss.at_return_type(); ss.next()) {
       BasicType bt = ss.type();
       if (InlineTypePassFieldsAsArgs && bt == T_OBJECT) {
         InlineKlass* vk = ss.as_inline_klass(holder);
@@ -3205,7 +3205,7 @@ void AdapterHandlerLibrary::verify_adapter_sharing(CompiledEntrySignature& ces, 
 }
 #endif /* ASSERT*/
 
-AdapterHandlerEntry* AdapterHandlerLibrary::get_adapter(const methodHandle& method) {
+AdapterHandlerEntry* AdapterHandlerLibrary::get_adapter(const methodHandle& method, SignatureCache* sc) {
   assert(!method->is_abstract() || InlineTypePassFieldsAsArgs, "abstract methods do not have adapters");
   // Use customized signature handler.  Need to lock around updates to
   // the _adapter_handler_table (it is not safe for concurrent readers
@@ -3222,7 +3222,7 @@ AdapterHandlerEntry* AdapterHandlerLibrary::get_adapter(const methodHandle& meth
   bool new_entry = false;
 
   CompiledEntrySignature ces(method());
-  ces.compute_calling_conventions();
+  ces.compute_calling_conventions(sc);
   if (ces.has_scalarized_args()) {
     if (!method->has_scalarized_args()) {
       method->set_has_scalarized_args();

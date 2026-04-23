@@ -49,6 +49,7 @@ class ConstantPool;
 class DeoptimizationScope;
 class klassItable;
 class RecordComponent;
+class SignatureCache;
 
 // An InstanceKlass is the VM level representation of a Java class.
 // It contains all information needed for at class at execution runtime.
@@ -656,7 +657,7 @@ public:
   void link_class(TRAPS);
   bool link_class_or_fail(TRAPS); // returns false on failure
   void rewrite_class(TRAPS);
-  void link_methods(TRAPS);
+  void link_methods(SignatureCache* sc, TRAPS);
   Method* class_initializer() const;
   bool interface_needs_clinit_execution_as_super(bool also_check_supers=true) const;
 

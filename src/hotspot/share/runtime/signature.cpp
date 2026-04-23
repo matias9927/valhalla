@@ -295,8 +295,22 @@ static inline BasicType decode_signature_char(int ch) {
   return (BasicType)0;
 }
 
+SignatureCache::SignatureCache() {
+  _names = new GrowableArray<Symbol*>(10);
+}
+
+SignatureCache::~SignatureCache() {
+  if (_names != nullptr) {
+    for (int i = 0; i < _names->length(); i++) {
+      _names->at(i)->decrement_refcount();
+    }
+  }
+}
+
+GrowableArray<Symbol*>* SignatureCache::names() { return _names; }
+
 SignatureStream::SignatureStream(const Symbol* signature,
-                                 bool is_method) {
+                                 bool is_method, SignatureCache* cache) {
   assert(!is_method || signature->starts_with(JVM_SIGNATURE_FUNC),
          "method signature required");
   _signature = signature;
@@ -309,7 +323,8 @@ SignatureStream::SignatureStream(const Symbol* signature,
   // assigning java/lang/Object to _previous_name means we can
   // avoid a number of null checks in the parser
   _previous_name = vmSymbols::java_lang_Object();
-  _names = nullptr;
+  _has_cache = (cache != nullptr);
+  _names = _has_cache ? cache->names() : nullptr;
   next();
 }
 
@@ -321,10 +336,12 @@ SignatureStream::~SignatureStream() {
   }
 
   // decrement refcount for names created during signature parsing
-  _previous_name->decrement_refcount();
-  if (_names != nullptr) {
-    for (int i = 0; i < _names->length(); i++) {
-      _names->at(i)->decrement_refcount();
+  if (!_has_cache) {
+    _previous_name->decrement_refcount();
+    if (_names != nullptr) {
+      for (int i = 0; i < _names->length(); i++) {
+        _names->at(i)->decrement_refcount();
+      }
     }
   }
 }

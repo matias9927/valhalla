@@ -1242,8 +1242,10 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         SystemDictionaryShared::check_verification_constraints(this, CHECK_false);
       }
 
+      ResourceMark rm;
+      SignatureCache sc;
       // relocate jsrs and link methods after they are all rewritten
-      link_methods(CHECK_false);
+      link_methods(&sc, CHECK_false);
 
       // Initialize the vtable and interface table after
       // methods have been rewritten since rewrite may
@@ -1314,7 +1316,7 @@ void InstanceKlass::rewrite_class(TRAPS) {
 // Now relocate and link method entry points after class is rewritten.
 // This is outside is_rewritten flag. In case of an exception, it can be
 // executed more than once.
-void InstanceKlass::link_methods(TRAPS) {
+void InstanceKlass::link_methods(SignatureCache* sc, TRAPS) {
   PerfTraceTime timer(ClassLoader::perf_ik_link_methods_time());
 
   int len = methods()->length();
@@ -1322,7 +1324,7 @@ void InstanceKlass::link_methods(TRAPS) {
     methodHandle m(THREAD, methods()->at(i));
 
     // Set up method entry points for compiler and interpreter    .
-    m->link_method(m, CHECK);
+    m->link_method(m, sc, CHECK);
   }
 }
 

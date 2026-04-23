@@ -1304,7 +1304,7 @@ void Method::remove_unshareable_flags() {
 
 // Called when the method_holder is getting linked. Setup entrypoints so the method
 // is ready to be called from interpreter, compiler, and vtables.
-void Method::link_method(const methodHandle& h_method, TRAPS) {
+void Method::link_method(const methodHandle& h_method, SignatureCache* sc, TRAPS) {
   if (log_is_enabled(Info, perf, class, link)) {
     ClassLoader::perf_ik_link_methods_count()->inc();
   }
@@ -1347,7 +1347,7 @@ void Method::link_method(const methodHandle& h_method, TRAPS) {
   // With the scalarized calling convention, create adapters for abstract
   // methods as well because the adapter is used to propagate the signature.
   if (_adapter == nullptr && (!h_method->is_abstract() || InlineTypePassFieldsAsArgs)) {
-    make_adapters(h_method, CHECK);
+    make_adapters(h_method, sc, CHECK);
   }
   h_method->_from_compiled_entry = h_method->get_c2i_entry();
   h_method->_from_compiled_inline_entry = h_method->get_c2i_inline_entry();
@@ -1370,14 +1370,14 @@ void Method::link_method(const methodHandle& h_method, TRAPS) {
   }
 }
 
-void Method::make_adapters(const methodHandle& mh, TRAPS) {
+void Method::make_adapters(const methodHandle& mh, SignatureCache* sc, TRAPS) {
   assert(!mh->is_abstract() || InlineTypePassFieldsAsArgs, "abstract methods do not have adapters");
   PerfTraceTime timer(ClassLoader::perf_method_adapters_time());
 
   // Adapters for compiled code are made eagerly here.  They are fairly
   // small (generally < 100 bytes) and quick to make (and cached and shared)
   // so making them eagerly shouldn't be too expensive.
-  AdapterHandlerEntry* adapter = AdapterHandlerLibrary::get_adapter(mh);
+  AdapterHandlerEntry* adapter = AdapterHandlerLibrary::get_adapter(mh, sc);
   if (adapter == nullptr ) {
     if (!is_init_completed()) {
       // Don't throw exceptions during VM initialization because java.lang.* classes
@@ -1629,7 +1629,7 @@ methodHandle Method::make_method_handle_intrinsic(vmIntrinsics::ID iid,
   // Finally, set up its entry points.
   assert(m->can_be_statically_bound(), "");
   m->set_vtable_index(Method::nonvirtual_vtable_index);
-  m->link_method(m, CHECK_(empty));
+  m->link_method(m, nullptr, CHECK_(empty));
 
   if (iid == vmIntrinsics::_linkToNative) {
     m->set_interpreter_entry(m->adapter()->get_i2c_entry());
@@ -1650,7 +1650,7 @@ void Method::restore_archived_method_handle_intrinsic(methodHandle m, TRAPS) {
     m->set_from_compiled_inline_entry(m->adapter()->get_c2i_inline_entry());
     m->set_from_compiled_inline_ro_entry(m->adapter()->get_c2i_inline_ro_entry());
   }
-  m->link_method(m, CHECK);
+  m->link_method(m, nullptr, CHECK);
 
   if (m->intrinsic_id() == vmIntrinsics::_linkToNative) {
     m->set_interpreter_entry(m->adapter()->get_i2c_entry());

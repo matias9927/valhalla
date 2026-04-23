@@ -916,7 +916,7 @@ class AdapterHandlerLibrary: public AllStatic {
 
   static AdapterHandlerEntry* new_entry(AdapterFingerPrint* fingerprint);
   static void create_native_wrapper(const methodHandle& method);
-  static AdapterHandlerEntry* get_adapter(const methodHandle& method);
+  static AdapterHandlerEntry* get_adapter(const methodHandle& method, SignatureCache* sc);
   static AdapterHandlerEntry* lookup(const GrowableArray<SigEntry>* sig, bool has_ro_adapter = false);
   static bool generate_adapter_code(AdapterHandlerEntry* handler,
                                     CompiledEntrySignature& ces,
@@ -998,7 +998,7 @@ public:
   CodeOffsets::Entries c1_inline_ro_entry_type() const;
 
   CompiledEntrySignature(Method* method = nullptr);
-  void compute_calling_conventions(bool init = true);
+  void compute_calling_conventions(bool init = true, SignatureCache* sc = nullptr);
   void initialize_from_fingerprint(AdapterFingerPrint* fingerprint);
 };
 

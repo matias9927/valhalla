@@ -1514,7 +1514,7 @@ jvmtiError VM_RedefineClasses::load_new_class_versions() {
 
     Rewriter::rewrite(scratch_class, THREAD);
     if (!HAS_PENDING_EXCEPTION) {
-      scratch_class->link_methods(THREAD);
+      scratch_class->link_methods(nullptr, THREAD);
     }
     if (HAS_PENDING_EXCEPTION) {
       Symbol* ex_name = PENDING_EXCEPTION->klass()->name();

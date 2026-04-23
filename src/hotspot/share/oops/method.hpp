@@ -64,6 +64,7 @@ class ConstMethod;
 class InlineTableSizes;
 class nmethod;
 class InterpreterOopMap;
+class SignatureCache;
 
 class Method : public Metadata {
  friend class VMStructs;
@@ -133,7 +134,7 @@ class Method : public Metadata {
   void set_constMethod(ConstMethod* xconst)    { _constMethod = xconst; }
 
 
-  static void make_adapters(const methodHandle& mh, TRAPS);
+  static void make_adapters(const methodHandle& mh, SignatureCache* sc, TRAPS);
   address from_compiled_entry() const;
   address from_compiled_inline_ro_entry() const;
   address from_compiled_inline_entry() const;
@@ -409,7 +410,7 @@ public:
     return _adapter;
   }
   // setup entry points
-  void link_method(const methodHandle& method, TRAPS);
+  void link_method(const methodHandle& method, SignatureCache* sc, TRAPS);
   // clear entry points. Used by sharing code during dump time
   void unlink_method() NOT_CDS_RETURN;
   void remove_unshareable_flags() NOT_CDS_RETURN;

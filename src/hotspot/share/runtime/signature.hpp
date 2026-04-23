@@ -465,6 +465,14 @@ class NativeSignatureIterator: public SignatureIterator {
   }
 };
 
+class SignatureCache {
+  GrowableArray<Symbol*>* _names;
+
+ public:
+  SignatureCache();
+  ~SignatureCache();
+  GrowableArray<Symbol*>* names();
+};
 
 // This is the core parsing logic for iterating over signatures.
 // All of the previous classes use this for doing their work.
@@ -480,6 +488,7 @@ class SignatureStream : public StackObj {
   int          _state;
   Symbol*      _previous_name;    // cache the previously looked up symbol to avoid lookups
   GrowableArray<Symbol*>* _names; // symbols created while parsing that need to be dereferenced
+  bool _has_cache; // Uses an external SignatureCache to record created symbols
 
   Symbol* find_symbol();
 
@@ -495,7 +504,7 @@ class SignatureStream : public StackObj {
   bool is_done() const                           { return _state < 0; }
   void next();
 
-  SignatureStream(const Symbol* signature, bool is_method = true);
+  SignatureStream(const Symbol* signature, bool is_method = true, SignatureCache* cache = nullptr);
   ~SignatureStream();
 
   bool is_reference() const { return is_reference_type(_type); }
