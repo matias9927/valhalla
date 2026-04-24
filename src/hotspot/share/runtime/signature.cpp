@@ -331,7 +331,7 @@ SignatureStream::SignatureStream(const Symbol* signature,
 SignatureStream::~SignatureStream() {
   if (_previous_name == vmSymbols::java_lang_Object()) {
     // no names were created
-    assert(_names == nullptr, "_names unexpectedly created");
+    assert(_names == nullptr || _has_cache, "_names unexpectedly created without cache");
     return;
   }
 
@@ -508,7 +508,7 @@ Symbol* SignatureStream::find_symbol() {
 
   // Only allocate the GrowableArray for the _names buffer if more than
   // one name is being processed in the signature.
-  if (!_previous_name->is_permanent()) {
+  if (_previous_name != vmSymbols::java_lang_Object()) {
     if (_names == nullptr) {
       _names = new GrowableArray<Symbol*>(10);
     }

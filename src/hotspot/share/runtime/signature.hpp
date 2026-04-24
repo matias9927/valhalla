@@ -472,6 +472,7 @@ class SignatureCache {
   SignatureCache();
   ~SignatureCache();
   GrowableArray<Symbol*>* names();
+  int len() { return _names->length(); }
 };
 
 // This is the core parsing logic for iterating over signatures.

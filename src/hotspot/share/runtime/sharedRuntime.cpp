@@ -3218,11 +3218,10 @@ AdapterHandlerEntry* AdapterHandlerLibrary::get_adapter(const methodHandle& meth
     return entry;
   }
 
-  ResourceMark rm;
   bool new_entry = false;
 
   CompiledEntrySignature ces(method());
-  ces.compute_calling_conventions(sc);
+  ces.compute_calling_conventions(true, sc);
   if (ces.has_scalarized_args()) {
     if (!method->has_scalarized_args()) {
       method->set_has_scalarized_args();

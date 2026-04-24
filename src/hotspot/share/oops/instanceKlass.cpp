@@ -1242,10 +1242,12 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         SystemDictionaryShared::check_verification_constraints(this, CHECK_false);
       }
 
-      ResourceMark rm;
-      SignatureCache sc;
-      // relocate jsrs and link methods after they are all rewritten
-      link_methods(&sc, CHECK_false);
+      {
+        ResourceMark rm(THREAD);
+        SignatureCache sc;
+        // relocate jsrs and link methods after they are all rewritten
+        link_methods(&sc, CHECK_false);
+      }
 
       // Initialize the vtable and interface table after
       // methods have been rewritten since rewrite may
