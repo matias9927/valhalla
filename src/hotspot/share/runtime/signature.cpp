@@ -297,6 +297,7 @@ static inline BasicType decode_signature_char(int ch) {
 
 SignatureCache::SignatureCache() {
   _names = new GrowableArray<Symbol*>(10);
+  _klass_table = new (mtClass)KlassNameTable(7, 1 * M);
 }
 
 SignatureCache::~SignatureCache() {
@@ -305,9 +306,8 @@ SignatureCache::~SignatureCache() {
       _names->at(i)->decrement_refcount();
     }
   }
+  delete _klass_table;
 }
-
-GrowableArray<Symbol*>* SignatureCache::names() { return _names; }
 
 SignatureStream::SignatureStream(const Symbol* signature,
                                  bool is_method, SignatureCache* cache) {
@@ -323,6 +323,7 @@ SignatureStream::SignatureStream(const Symbol* signature,
   // assigning java/lang/Object to _previous_name means we can
   // avoid a number of null checks in the parser
   _previous_name = vmSymbols::java_lang_Object();
+  _cache = cache;
   _has_cache = (cache != nullptr);
   _names = _has_cache ? cache->names() : nullptr;
   next();
@@ -343,6 +344,8 @@ SignatureStream::~SignatureStream() {
         _names->at(i)->decrement_refcount();
       }
     }
+  } else {
+    _names->push(_previous_name);
   }
 }
 
@@ -520,6 +523,11 @@ Symbol* SignatureStream::find_symbol() {
 
 InlineKlass* SignatureStream::as_inline_klass(InstanceKlass* holder) {
   assert(InlineTypePassFieldsAsArgs || InlineTypeReturnedAsFields, "Not needed");
+  Symbol* name = as_symbol();
+  if (_has_cache && _cache->table_contains(name)) {
+    return _cache->get_inline_klass(name);
+  }
+
   ThreadInVMfromUnknown tiv;
   JavaThread* THREAD = JavaThread::current();
   HandleMark hm(THREAD);
@@ -527,7 +535,9 @@ InlineKlass* SignatureStream::as_inline_klass(InstanceKlass* holder) {
   Klass* k = as_klass(class_loader, SignatureStream::CachedOrNull, THREAD);
   assert(!HAS_PENDING_EXCEPTION, "Should never throw");
   if (k != nullptr && k->is_inline_klass()) {
-    return InlineKlass::cast(k);
+    InlineKlass* ik = InlineKlass::cast(k);
+    if (_has_cache) _cache->put_klass(name, ik);
+    return ik;
   } else {
     return nullptr;
   }

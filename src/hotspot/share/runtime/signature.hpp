@@ -467,12 +467,20 @@ class NativeSignatureIterator: public SignatureIterator {
 
 class SignatureCache {
   GrowableArray<Symbol*>* _names;
+  typedef ResizeableHashTable<Symbol*, InlineKlass*, AnyObj::C_HEAP, mtClass> KlassNameTable;
+  KlassNameTable* _klass_table;
 
  public:
   SignatureCache();
   ~SignatureCache();
-  GrowableArray<Symbol*>* names();
+  GrowableArray<Symbol*>* names() { return _names; }
   int len() { return _names->length(); }
+  InlineKlass* get_inline_klass(Symbol* name) {
+    assert(_klass_table->contains(name), "must contain");
+    return *_klass_table->get(name);
+  }
+  void put_klass(Symbol* name, InlineKlass* k) { _klass_table->put(name, k); }
+  bool table_contains(Symbol* name) { return _klass_table->contains(name); }
 };
 
 // This is the core parsing logic for iterating over signatures.
@@ -489,6 +497,7 @@ class SignatureStream : public StackObj {
   int          _state;
   Symbol*      _previous_name;    // cache the previously looked up symbol to avoid lookups
   GrowableArray<Symbol*>* _names; // symbols created while parsing that need to be dereferenced
+  SignatureCache* _cache;
   bool _has_cache; // Uses an external SignatureCache to record created symbols
 
   Symbol* find_symbol();
