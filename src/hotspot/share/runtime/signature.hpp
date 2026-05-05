@@ -29,6 +29,7 @@
 #include "classfile/symbolTable.hpp"
 #include "memory/allocation.hpp"
 #include "oops/method.hpp"
+#include "utilities/resizableHashTable.hpp"
 
 // Static routines and parsing loops for processing field and method
 // descriptors.  In the HotSpot sources we call them "signatures".
@@ -467,7 +468,7 @@ class NativeSignatureIterator: public SignatureIterator {
 
 class SignatureCache {
   GrowableArray<Symbol*>* _names;
-  typedef ResizeableHashTable<Symbol*, InlineKlass*, AnyObj::C_HEAP, mtClass> KlassNameTable;
+  typedef ResizeableHashTable<Symbol*, Klass*, AnyObj::C_HEAP, mtClass> KlassNameTable;
   KlassNameTable* _klass_table;
 
  public:
@@ -475,11 +476,11 @@ class SignatureCache {
   ~SignatureCache();
   GrowableArray<Symbol*>* names() { return _names; }
   int len() { return _names->length(); }
-  InlineKlass* get_inline_klass(Symbol* name) {
+  Klass* get_klass(Symbol* name) {
     assert(_klass_table->contains(name), "must contain");
     return *_klass_table->get(name);
   }
-  void put_klass(Symbol* name, InlineKlass* k) { _klass_table->put(name, k); }
+  void put_klass(Symbol* name, Klass* k) { _klass_table->put(name, k); }
   bool table_contains(Symbol* name) { return _klass_table->contains(name); }
 };
 

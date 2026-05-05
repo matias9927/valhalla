@@ -525,7 +525,13 @@ InlineKlass* SignatureStream::as_inline_klass(InstanceKlass* holder) {
   assert(InlineTypePassFieldsAsArgs || InlineTypeReturnedAsFields, "Not needed");
   Symbol* name = as_symbol();
   if (_has_cache && _cache->table_contains(name)) {
-    return _cache->get_inline_klass(name);
+    Klass* cached = _cache->get_klass(name);
+    if (cached != nullptr) {
+      assert(cached->is_inline_klass(), "must be");
+      return InlineKlass::cast(cached);
+    } else {
+      return nullptr;
+    }
   }
 
   ThreadInVMfromUnknown tiv;
@@ -539,6 +545,7 @@ InlineKlass* SignatureStream::as_inline_klass(InstanceKlass* holder) {
     if (_has_cache) _cache->put_klass(name, ik);
     return ik;
   } else {
+    if (_has_cache && k != nullptr) _cache->put_klass(name, nullptr);
     return nullptr;
   }
 }
